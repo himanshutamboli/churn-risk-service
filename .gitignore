@@ -21,3 +21,6 @@ wheels/
 .DS_Store
 .idea/
 .vscode/
+
+# Trained model artifacts (regenerated via `python -m churn_risk_service.train`)
+models/

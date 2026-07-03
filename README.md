@@ -41,6 +41,29 @@ Engineered features (add-on service count, charges-per-tenure, has-internet, ten
 
 Full write-up: [`reports/calibration.md`](reports/calibration.md) · complete [`MODEL_CARD.md`](MODEL_CARD.md).
 
+## API (Day 11)
+
+A **FastAPI** service serves the persisted model with typed pydantic validation
+(auto-docs at `/docs`). It returns a probability *and* the business decision at the
+Day-10 threshold. The service self-bootstraps: if no model file exists it trains and
+persists one on first request.
+
+```bash
+uv run python -m churn_risk_service.train                    # persist models/churn_model.joblib
+uv run uvicorn churn_risk_service.api:app --reload           # serve on :8000
+
+curl -s localhost:8000/predict -H 'content-type: application/json' -d '{
+  "gender":"Female","SeniorCitizen":0,"Partner":"No","Dependents":"No","tenure":1,
+  "PhoneService":"Yes","MultipleLines":"No","InternetService":"Fiber optic",
+  "OnlineSecurity":"No","OnlineBackup":"No","DeviceProtection":"No","TechSupport":"No",
+  "StreamingTV":"No","StreamingMovies":"No","Contract":"Month-to-month",
+  "PaperlessBilling":"Yes","PaymentMethod":"Electronic check",
+  "MonthlyCharges":95.0,"TotalCharges":95.0}'
+# -> {"churn_probability":0.630,"churn_prediction":true,"threshold":0.07,"model_version":"v2-logreg_feat"}
+```
+
+Invalid input (e.g. `tenure: -1`, unknown field) is rejected with `422`. Tested with `TestClient`.
+
 ## Quickstart
 
 ```bash
@@ -59,9 +82,14 @@ churn-risk-service/
 │   ├── baseline.py               # preprocessing pipeline, dummy vs logreg, honest eval
 │   ├── features.py               # row-wise engineered features (leakage-safe)
 │   ├── model.py                  # pipeline builder for all model variants
-│   └── compare.py                # train all variants -> comparison table
-├── tests/                        # split/leakage guards, "accuracy lies", row-independence
-└── reports/                      # generated eval_baseline.md + comparison.md
+│   ├── compare.py                # train all variants -> comparison table
+│   ├── train.py                  # fit final model + persist serving artifact
+│   ├── schemas.py                # pydantic request/response
+│   ├── service.py                # model load/train + scoring
+│   └── api.py                    # FastAPI app (/health, /predict)
+├── tests/                        # split/leakage guards, "accuracy lies", API (TestClient)
+├── MODEL_CARD.md
+└── reports/                      # generated eval_baseline.md + comparison.md + calibration.md
 ```
 
 ## Roadmap
@@ -71,7 +99,7 @@ churn-risk-service/
 | 8 ✅ | Framing + baseline + honest eval (PR-AUC, leakage guard) |
 | 9 ✅ | Feature engineering (no leakage) + model v2 + comparison table |
 | 10 ✅ | Calibration + business-cost threshold + MODEL_CARD.md |
-| 11 | FastAPI `/predict` endpoint |
+| 11 ✅ | FastAPI `/predict` + persisted model + pydantic validation |
 | 12 | Dockerfile + API tests in CI |
 | 13 | Drift monitoring + structured logging |
 | 14 | Ship v1.0 |
