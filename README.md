@@ -21,6 +21,19 @@ Most churn "projects" report 80% accuracy and stop. On a 26% base rate, a model 
 
 **Leakage guard:** preprocessing (scaling, one-hot) is fit inside the `Pipeline` on the *training* split only — validation/test never leak into the fitted transforms. Split is stratified 60/20/20; test is untouched until final model selection.
 
+## Model iteration (Day 9)
+
+Engineered features (add-on service count, charges-per-tenure, has-internet, tenure bucket) are **row-wise, fit inside the pipeline** — a test asserts they're computed per-row with no dataset-level statistics, so they can't leak.
+
+| model | accuracy | precision | recall | f1 | roc_auc | **pr_auc** |
+| --- | --- | --- | --- | --- | --- | --- |
+| dummy | 0.735 | 0.000 | 0.000 | 0.000 | 0.500 | 0.265 |
+| logreg_base | 0.803 | 0.658 | 0.535 | 0.590 | 0.836 | 0.642 |
+| **logreg_feat** | 0.804 | 0.666 | 0.527 | 0.588 | 0.837 | **0.647** |
+| hgb_feat | 0.747 | 0.517 | 0.711 | 0.598 | 0.827 | 0.625 |
+
+**Honest finding:** features gave logistic regression a small PR-AUC lift (0.642 → **0.647**). Gradient boosting (`class_weight=balanced`) did **not** improve PR-AUC — it shifted to a high-recall/low-precision operating point (0.71 recall), useful only if the business cost of a missed churner dominates. On this near-linear dataset, **tuned logistic regression is the model to beat**; not every problem needs a tree ensemble. Selected v2: `logreg_feat`. Full table: [`reports/comparison.md`](reports/comparison.md).
+
 ## Quickstart
 
 ```bash
@@ -36,9 +49,12 @@ churn-risk-service/
 ├── data/telco_churn.csv          # IBM Telco Customer Churn (committed, self-contained)
 ├── src/churn_risk_service/
 │   ├── data.py                   # load, clean (TotalCharges quirk), stratified split
-│   └── baseline.py               # preprocessing pipeline, dummy vs logreg, honest eval
-├── tests/                        # cleaning/split invariants + "accuracy lies" guard
-└── reports/eval_baseline.md      # generated evaluation report
+│   ├── baseline.py               # preprocessing pipeline, dummy vs logreg, honest eval
+│   ├── features.py               # row-wise engineered features (leakage-safe)
+│   ├── model.py                  # pipeline builder for all model variants
+│   └── compare.py                # train all variants -> comparison table
+├── tests/                        # split/leakage guards, "accuracy lies", row-independence
+└── reports/                      # generated eval_baseline.md + comparison.md
 ```
 
 ## Roadmap
@@ -46,7 +62,7 @@ churn-risk-service/
 | Day | Deliverable |
 |---|---|
 | 8 ✅ | Framing + baseline + honest eval (PR-AUC, leakage guard) |
-| 9 | Feature engineering (no future leakage) + model v2 |
+| 9 ✅ | Feature engineering (no leakage) + model v2 + comparison table |
 | 10 | Calibration + threshold tied to business cost + model card |
 | 11 | FastAPI `/predict` endpoint |
 | 12 | Dockerfile + API tests in CI |
