@@ -64,6 +64,18 @@ curl -s localhost:8000/predict -H 'content-type: application/json' -d '{
 
 Invalid input (e.g. `tenure: -1`, unknown field) is rejected with `422`. Tested with `TestClient`.
 
+## Docker (Day 12)
+
+Multi-stage build: the builder installs deps and **bakes the model** (`train`) into the image; the runtime stage ships a slim image with just the venv + model.
+
+```bash
+docker build -t churn-risk-service .
+docker run -p 8000:8000 churn-risk-service
+curl -s localhost:8000/predict -H 'content-type: application/json' -d @examples/request.json
+```
+
+CI builds the image on every push and **smoke-tests the running container** (`/health` + `/predict`), so a broken Dockerfile fails the pipeline.
+
 ## Quickstart
 
 ```bash
@@ -100,7 +112,7 @@ churn-risk-service/
 | 9 ✅ | Feature engineering (no leakage) + model v2 + comparison table |
 | 10 ✅ | Calibration + business-cost threshold + MODEL_CARD.md |
 | 11 ✅ | FastAPI `/predict` + persisted model + pydantic validation |
-| 12 | Dockerfile + API tests in CI |
+| 12 ✅ | Multi-stage Dockerfile + container smoke-test in CI |
 | 13 | Drift monitoring + structured logging |
 | 14 | Ship v1.0 |
 

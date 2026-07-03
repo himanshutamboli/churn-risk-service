@@ -31,3 +31,28 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t churn-risk-service:ci .
+
+      - name: Run container
+        run: docker run -d -p 8000:8000 --name churn churn-risk-service:ci
+
+      - name: Smoke test /health and /predict
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf localhost:8000/health && break || sleep 1
+          done
+          curl -sf localhost:8000/health
+          curl -sf localhost:8000/predict \
+            -H 'content-type: application/json' \
+            -d @examples/request.json
+
+      - name: Container logs (always)
+        if: always()
+        run: docker logs churn
