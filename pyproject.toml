@@ -1,0 +1,36 @@
+[project]
+name = "churn-risk-service"
+version = "0.1.0"
+description = "Customer churn prediction served as software: trained model, honest eval, API, monitoring."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "joblib>=1.5.3",
+    "pandas>=3.0.3",
+    "scikit-learn>=1.9.0",
+]
+
+[project.scripts]
+churn-risk-service = "churn_risk_service:main"
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.20",
+]
