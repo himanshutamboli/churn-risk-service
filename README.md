@@ -6,9 +6,39 @@
 
 > Customer churn prediction shipped as **software**, not a notebook: honest evaluation, a trained model behind an API, calibration, drift monitoring, Docker, and CI. Built on the IBM Telco Customer Churn dataset (7,043 customers, ~26.5% churn).
 
+## Demo
+
+![FastAPI /docs — the /predict endpoint](docs/api_docs.png)
+
+*Interactive OpenAPI docs at `/docs`. `/predict` returns a calibrated probability and the business decision (using the cost-based threshold). Try it: `uv run uvicorn churn_risk_service.api:app` → open http://localhost:8000/docs.*
+
 ## Why this exists
 
 Most churn "projects" report 80% accuracy and stop. On a 26% base rate, a model that predicts *"nobody churns"* also scores ~74% accuracy — and is worthless. This repo is built around honest evaluation and productionization instead.
+
+## Architecture
+
+```
+ Telco CSV
+    │  data.py  (clean TotalCharges quirk, stratified 60/20/20)
+    ▼
+ features.py  (row-wise, leakage-safe)
+    │
+    ▼
+ model.py ──► compare.py ──► reports/comparison.md   (pick logreg_feat)
+    │
+    ├─► calibration.py ──► business-cost threshold ──► MODEL_CARD.md
+    │
+    ▼
+ train.py  ──►  models/churn_model.joblib  (pipeline + threshold, baked into image)
+    │
+    ▼
+ service.py ──► api.py  (FastAPI /predict, /health)  ──► Docker  ──► CI smoke test
+    │
+    └─► monitoring.py  (PSI drift) + structured request logs
+```
+
+Every stage is tested; the model artifact and Docker image are built and verified in CI.
 
 ## Baseline evaluation (validation split)
 
@@ -125,7 +155,7 @@ churn-risk-service/
 | 11 ✅ | FastAPI `/predict` + persisted model + pydantic validation |
 | 12 ✅ | Multi-stage Dockerfile + container smoke-test in CI |
 | 13 ✅ | PSI drift detection + structured request logging |
-| 14 | Ship v1.0 |
+| 14 ✅ | Ship v1.0 (README polish, architecture, demo) |
 
 ## Data source
 
