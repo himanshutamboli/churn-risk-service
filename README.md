@@ -34,6 +34,13 @@ Engineered features (add-on service count, charges-per-tenure, has-internet, ten
 
 **Honest finding:** features gave logistic regression a small PR-AUC lift (0.642 → **0.647**). Gradient boosting (`class_weight=balanced`) did **not** improve PR-AUC — it shifted to a high-recall/low-precision operating point (0.71 recall), useful only if the business cost of a missed churner dominates. On this near-linear dataset, **tuned logistic regression is the model to beat**; not every problem needs a tree ensemble. Selected v2: `logreg_feat`. Full table: [`reports/comparison.md`](reports/comparison.md).
 
+## Calibration & decision threshold (Day 10)
+
+- **Calibration:** checked isotonic calibration; Brier didn't improve (0.1379 → 0.1384) — logistic regression is already well-calibrated, so we ship it uncalibrated and *document* the check.
+- **Threshold by business cost:** with a wasted offer (FP) = $50 and a missed churner (FN) = $500, the decision rule is "offer when churn prob > 0.10"; empirical optimum **0.07**. That lifts recall to **0.96** and cuts expected validation cost from **$103k → $55k** vs the arbitrary 0.5 threshold.
+
+Full write-up: [`reports/calibration.md`](reports/calibration.md) · complete [`MODEL_CARD.md`](MODEL_CARD.md).
+
 ## Quickstart
 
 ```bash
@@ -63,7 +70,7 @@ churn-risk-service/
 |---|---|
 | 8 ✅ | Framing + baseline + honest eval (PR-AUC, leakage guard) |
 | 9 ✅ | Feature engineering (no leakage) + model v2 + comparison table |
-| 10 | Calibration + threshold tied to business cost + model card |
+| 10 ✅ | Calibration + business-cost threshold + MODEL_CARD.md |
 | 11 | FastAPI `/predict` endpoint |
 | 12 | Dockerfile + API tests in CI |
 | 13 | Drift monitoring + structured logging |
