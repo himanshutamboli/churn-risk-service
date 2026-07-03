@@ -76,6 +76,16 @@ curl -s localhost:8000/predict -H 'content-type: application/json' -d @examples/
 
 CI builds the image on every push and **smoke-tests the running container** (`/health` + `/predict`), so a broken Dockerfile fails the pipeline.
 
+## Monitoring (Day 13)
+
+- **Drift detection** via **PSI** (Population Stability Index) — a dependency-light, transparent check. A reference profile is built from the training features (quantile bins for numeric, frequencies for categorical); any batch is scored against it. Convention: PSI < 0.1 none · 0.1–0.25 moderate · > 0.25 major.
+- **Validated:** test-split-vs-train reports ~0 PSI everywhere; a synthetically shifted batch (+$60 charges, all month-to-month) is flagged **major** (MonthlyCharges PSI 7.5, Contract 5.8). See [`reports/drift.md`](reports/drift.md).
+- **Structured logging:** `/predict` emits one JSON line per request (features, probability, prediction, latency) — the raw material for online drift monitoring.
+
+```bash
+uv run python -m churn_risk_service.monitoring   # write reports/drift.md
+```
+
 ## Quickstart
 
 ```bash
@@ -98,7 +108,8 @@ churn-risk-service/
 │   ├── train.py                  # fit final model + persist serving artifact
 │   ├── schemas.py                # pydantic request/response
 │   ├── service.py                # model load/train + scoring
-│   └── api.py                    # FastAPI app (/health, /predict)
+│   ├── api.py                    # FastAPI app (/health, /predict) + structured logging
+│   └── monitoring.py             # PSI drift detection
 ├── tests/                        # split/leakage guards, "accuracy lies", API (TestClient)
 ├── MODEL_CARD.md
 └── reports/                      # generated eval_baseline.md + comparison.md + calibration.md
@@ -113,7 +124,7 @@ churn-risk-service/
 | 10 ✅ | Calibration + business-cost threshold + MODEL_CARD.md |
 | 11 ✅ | FastAPI `/predict` + persisted model + pydantic validation |
 | 12 ✅ | Multi-stage Dockerfile + container smoke-test in CI |
-| 13 | Drift monitoring + structured logging |
+| 13 ✅ | PSI drift detection + structured request logging |
 | 14 | Ship v1.0 |
 
 ## Data source
